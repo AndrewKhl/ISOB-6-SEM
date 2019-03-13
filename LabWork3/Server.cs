@@ -33,40 +33,103 @@ namespace LabWork3
 
         private static async void Listener(object obj)
         {
+            var packages = new List<string>();
+
             while (_serverRun)
             {
                 var message = _soket.GetMessage(Name);
 
-                if (message == null)
+                if (message != null)
+                {
+                    _soket.ReceivedMessage(Name);
+
+                    packages.Add(message);
+                    if (IsFinPackage(message))
+                    {
+                        PackageBuild(packages);
+                        packages.Clear();
+                    }
+                }
+                else
                     await Task.Delay(200);
+
             }
+        }
+
+        private static bool IsFinPackage(string packege)
+        {
+            return packege[110] == '1';
+        }
+
+        private static void PackageBuild(List<string> packages)
+        {
+            string message = string.Empty;
+
+            foreach (var pac in packages)
+                message += pac.Substring(160);
+
+            Console.WriteLine($"Send message: {Encoding.Default.GetString(Encoding.Default.GetBytes(message))}");
         }
     }
 
+
     public class Soket
     {
-        private Dictionary<string, List<string>> buffer;
+        private Dictionary<string, List<string>> _buffer;
+        private Dictionary<string, bool> _receivedMessages;
         private int _sn = 0;
 
         public Soket()
         {
-            buffer = new Dictionary<string, List<string>>();
+            _buffer = new Dictionary<string, List<string>>();
+            _receivedMessages = new Dictionary<string, bool>();
         }
 
-        public void SendMessage(string client, string sender, string message)
+        public async void SendMessage(string client, string sender, string message)
         {
-            if (!buffer.ContainsKey(client))
-                buffer[client] = new List<string>();
+            if (!_buffer.ContainsKey(client))
+                _buffer[client] = new List<string>();
+
+            var byteMessage = Encoding.Default.GetBytes(message).ToString();
+
+            for (int i = 0; i < byteMessage.Length; i += 40)
+            {
+                string tcpHead = GetTcpHead(client, sender, i + 40 < byteMessage.Length - 1);
+                string data = byteMessage.Substring(i);
+
+                if (data.Length > 40)
+                    data = data.Substring(0, 40);
+
+                _buffer[client].Add(tcpHead + data);
+
+                await Task.Delay(100);
+            }
 
         }
 
         public string GetMessage(string client)
         {
-            return null;
-            //return buffer.ContainsKey(client) && buffer[client] != null ? buffer[client] : null;
+            if (!_buffer.ContainsKey(client) || !_receivedMessages[client] || _buffer[client].Count == 0)
+                return null;
+
+            _receivedMessages[client] = false;
+            
+            string message = _buffer[client].FirstOrDefault();
+
+            _buffer[client].Remove(message);
+
+            return message;
         }
 
-        private string GetTcpHead(string client, string sender)
+        public void ReceivedMessage(string client)
+        {
+            if (!_receivedMessages.ContainsKey(client))
+                return;
+
+            _receivedMessages[client] = true;
+        }
+
+        private string GetTcpHead(string client, string sender, bool fin = false)
         {
             return null;
         }
