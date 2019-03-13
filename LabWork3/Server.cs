@@ -46,18 +46,18 @@ namespace LabWork3
     public class Soket
     {
         private Dictionary<string, List<string>> buffer;
+        private int _sn = 0;
 
         public Soket()
         {
             buffer = new Dictionary<string, List<string>>();
         }
 
-        public void SendMessage(string client, string message)
+        public void SendMessage(string client, string sender, string message)
         {
             if (!buffer.ContainsKey(client))
                 buffer[client] = new List<string>();
 
-            CreateTcpPakeges(GetTcpHead(client));
         }
 
         public string GetMessage(string client)
@@ -66,14 +66,9 @@ namespace LabWork3
             //return buffer.ContainsKey(client) && buffer[client] != null ? buffer[client] : null;
         }
 
-        private List<byte> GetTcpHead(string client)
+        private string GetTcpHead(string client, string sender)
         {
             return null;
-        }
-
-        private void CreateTcpPakeges(List<byte> head)
-        {
-
         }
     }
 }
