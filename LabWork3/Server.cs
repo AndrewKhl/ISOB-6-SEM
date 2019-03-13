@@ -66,9 +66,30 @@ namespace LabWork3
             //return buffer.ContainsKey(client) && buffer[client] != null ? buffer[client] : null;
         }
 
-        private string GetTcpHead(string client, string sender)
+        private string GetTcpHead(string client, string sender, bool fin = false)
         {
-            return null;
+            var destinationPort = Convert.ToString(int.Parse(client), 2).PadLeft(16, '0');
+            var sourcePort = Convert.ToString(int.Parse(sender), 2).PadLeft(16, '0');
+
+            var sequenseNumber = Convert.ToString(_sn, 2).PadLeft(32, '0');
+            var acknowledgmentNumber = Convert.ToString(_sn + 1, 2).PadLeft(32, '0');
+
+            var dateOffset = "1111";
+            var reserved = "000000";
+            var URG = "0";
+            var ACK = "0";
+            var PSH = "0";
+            var RST = "0";
+            var SYN = (_sn == 0) ? "1" : "0";
+            var FIN = (fin) ? "1" : "0";
+
+            var window = Convert.ToString(123, 2).PadLeft(16, '0');
+            var checksum = "0101010101010101";
+            var urgentPointer = "0".PadLeft(16, '0');
+
+            _sn++;
+            return destinationPort + sourcePort + sequenseNumber + acknowledgmentNumber + dateOffset + reserved +
+                URG + ACK + PSH + RST + SYN + FIN + window + checksum + urgentPointer;
         }
     }
 }
