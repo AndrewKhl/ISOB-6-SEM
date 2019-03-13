@@ -16,7 +16,7 @@ namespace LabWork3
 
         static TcpServer()
         {
-            Name = "TcpServer";
+            Name = "1024";
         }
 
         public static void CreateConnection(Soket soket)
@@ -24,6 +24,8 @@ namespace LabWork3
             _soket = soket;
 
             ThreadPool.QueueUserWorkItem(Listener);
+
+            Console.WriteLine("TcpServer: Connection succesfull");
         }
 
         public static void ServerStop()
@@ -41,6 +43,8 @@ namespace LabWork3
 
                 if (message != null)
                 {
+                    //Console.WriteLine(message);
+
                     _soket.ReceivedMessage(Name);
 
                     packages.Add(message);
@@ -58,7 +62,7 @@ namespace LabWork3
 
         private static bool IsFinPackage(string packege)
         {
-            return packege[110] == '1';
+            return packege[111] == '1';
         }
 
         private static void PackageBuild(List<string> packages)
@@ -66,9 +70,12 @@ namespace LabWork3
             string message = string.Empty;
 
             foreach (var pac in packages)
-                message += pac.Substring(160);
+            {
+                for (int i = 160; i < pac.Length; i += 8)
+                    message += (char)Convert.ToInt32(pac.Substring(i, 8), 2);
+            }
 
-            Console.WriteLine($"Send message: {Encoding.Default.GetString(Encoding.Default.GetBytes(message))}");
+            Console.WriteLine($"Received message: {message}");
         }
     }
 
@@ -90,11 +97,12 @@ namespace LabWork3
             if (!_buffer.ContainsKey(client))
                 _buffer[client] = new List<string>();
 
-            var byteMessage = Encoding.Default.GetBytes(message).ToString();
+            var byteMessage = GetByteArray(message);
+            _receivedMessages[client] = true;
 
             for (int i = 0; i < byteMessage.Length; i += 40)
             {
-                string tcpHead = GetTcpHead(client, sender, i + 40 < byteMessage.Length - 1);
+                string tcpHead = GetTcpHead(client, sender, i + 40 >= byteMessage.Length - 1);
                 string data = byteMessage.Substring(i);
 
                 if (data.Length > 40)
@@ -107,9 +115,21 @@ namespace LabWork3
 
         }
 
+        private string GetByteArray(string message)
+        {
+            var bytes = Encoding.Default.GetBytes(message);
+
+            string ans = string.Empty;
+
+            foreach (var b in bytes)
+                ans += Convert.ToString(b, 2).PadLeft(8, '0');
+
+            return ans;
+        }
+
         public string GetMessage(string client)
         {
-            if (!_buffer.ContainsKey(client) || !_receivedMessages[client] || _buffer[client].Count == 0)
+            if (!_buffer.ContainsKey(client) || !_receivedMessages.ContainsKey(client) || !_receivedMessages[client] || _buffer[client].Count == 0)
                 return null;
 
             _receivedMessages[client] = false;
@@ -123,9 +143,6 @@ namespace LabWork3
 
         public void ReceivedMessage(string client)
         {
-            if (!_receivedMessages.ContainsKey(client))
-                return;
-
             _receivedMessages[client] = true;
         }
 
@@ -151,8 +168,9 @@ namespace LabWork3
             var urgentPointer = "0".PadLeft(16, '0');
 
             _sn++;
-            return destinationPort + sourcePort + sequenseNumber + acknowledgmentNumber + dateOffset + reserved +
+            string mes = destinationPort + sourcePort + sequenseNumber + acknowledgmentNumber + dateOffset + reserved +
                 URG + ACK + PSH + RST + SYN + FIN + window + checksum + urgentPointer;
+            return mes;
         }
     }
 }
