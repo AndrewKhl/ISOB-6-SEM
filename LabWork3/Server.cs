@@ -30,6 +30,8 @@ namespace LabWork3
 
         public static void ServerStop()
         {
+            if (_serverRun)
+                Console.WriteLine("TcpServer: connection closed");
             _serverRun = false;
         }
 
@@ -43,8 +45,6 @@ namespace LabWork3
 
                 if (message != null)
                 {
-                    //Console.WriteLine(message);
-
                     _soket.ReceivedMessage(Name);
 
                     packages.Add(message);
@@ -54,15 +54,21 @@ namespace LabWork3
                         packages.Clear();
                     }
                 }
-                else
-                    await Task.Delay(200);
 
+                await Task.Delay(500);
             }
         }
 
-        private static bool IsFinPackage(string packege)
+        private static bool IsFinPackage(string package)
         {
-            return packege[111] == '1';
+            int number = Convert.ToInt32(package.Substring(32, 32), 2);
+
+            Console.WriteLine($"TCP server: package accept {number}");
+
+            if (package[109] == '1')
+                ServerStop();
+
+            return package[111] == '1';
         }
 
         private static void PackageBuild(List<string> packages)
@@ -110,9 +116,8 @@ namespace LabWork3
 
                 _buffer[client].Add(tcpHead + data);
 
-                await Task.Delay(100);
+                await Task.Delay(200);
             }
-
         }
 
         private string GetByteArray(string message)
@@ -136,6 +141,11 @@ namespace LabWork3
             
             string message = _buffer[client].FirstOrDefault();
 
+            int number = Convert.ToInt32(message.Substring(32, 32), 2);
+
+            if (Convert.ToInt32(message.Substring(16, 16), 2).ToString() != "0")
+                Console.WriteLine($"Client: package sent {number}");
+
             _buffer[client].Remove(message);
 
             return message;
@@ -152,7 +162,7 @@ namespace LabWork3
             var sourcePort = Convert.ToString(int.Parse(sender), 2).PadLeft(16, '0');
 
             var sequenseNumber = Convert.ToString(_sn, 2).PadLeft(32, '0');
-            var acknowledgmentNumber = Convert.ToString(_sn + 1, 2).PadLeft(32, '0');
+            var acknowledgmentNumber = Convert.ToString(_sn, 2).PadLeft(32, '0');
 
             var dateOffset = "1111";
             var reserved = "000000";
@@ -160,17 +170,20 @@ namespace LabWork3
             var ACK = "0";
             var PSH = "0";
             var RST = "0";
-            var SYN = (_sn == 0) ? "1" : "0";
+            var SYN = (_sn++ == 0) ? "1" : "0";
             var FIN = (fin) ? "1" : "0";
 
             var window = Convert.ToString(123, 2).PadLeft(16, '0');
             var checksum = "0101010101010101";
             var urgentPointer = "0".PadLeft(16, '0');
 
-            _sn++;
-            string mes = destinationPort + sourcePort + sequenseNumber + acknowledgmentNumber + dateOffset + reserved +
+            return destinationPort + sourcePort + sequenseNumber + acknowledgmentNumber + dateOffset + reserved +
                 URG + ACK + PSH + RST + SYN + FIN + window + checksum + urgentPointer;
-            return mes;
+        }
+
+        public Dictionary<string, List<string>> GetBuffer()
+        {
+            return _buffer;
         }
     }
 }
